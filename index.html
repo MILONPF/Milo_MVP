@@ -1,0 +1,48 @@
+
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Milo</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main>
+    <h1>MILO</h1>
+    <button id="speakBtn" class="voice-btn">🎤 Tala med Milo</button>
+
+    <div class="button-container">
+      <button class="action red">+ Lägg till påminnelse</button>
+      <button class="action green">+ Lägg till inköp</button>
+      <button class="action blue">+ Lägg till mål</button>
+    </div>
+
+    <section class="tasks">
+      <h2>Dagens uppgifter</h2>
+      <ul></ul>
+    </section>
+
+    <section class="shopping">
+      <h2>Inköpslista</h2>
+      <ul id="shoppingList"></ul>
+      <button id="clearShoppingList">Töm inköpslistan</button>
+    </section>
+
+    <section class="goals">
+      <h2>Mål</h2>
+      <ul id="goalList"></ul>
+    </section>
+
+    <section class="family">
+      <h2>Lägg till familjemedlem</h2>
+      <div class="code-box" id="myCode">MILO-XXXX</div>
+      <button id="shareCode">Dela Milo-kod</button>
+      <p>Dela din unika kod för att lägga till en familjemedlem.</p>
+    </section>
+
+    <button class="tts-btn">🔊 Lyssna på dagens lista</button>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
