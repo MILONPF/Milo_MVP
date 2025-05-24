@@ -1,10 +1,123 @@
-
+<!DOCTYPE html>
 <html lang="sv">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Milo</title>
-  <link rel="stylesheet" href="style.css" />
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: sans-serif;
+      background-color: #111;
+      color: white;
+      text-align: center;
+    }
+
+    main {
+      padding: 20px;
+    }
+
+    h1 {
+      font-size: 2.5em;
+      margin-bottom: 10px;
+    }
+
+    .voice-btn {
+      font-size: 1.2em;
+      background: none;
+      color: white;
+      border: 2px solid white;
+      padding: 10px 20px;
+      border-radius: 30px;
+      margin-bottom: 20px;
+    }
+
+    .button-container .action {
+      display: block;
+      width: 90%;
+      margin: 10px auto;
+      padding: 15px;
+      font-size: 1.1em;
+      border: none;
+      border-radius: 12px;
+      color: white;
+    }
+
+    .red { background-color: #e74c3c; }
+    .green { background-color: #2ecc71; }
+    .blue { background-color: #3498db; }
+
+    .tasks, .shopping, .goals, .family {
+      text-align: left;
+      margin-top: 30px;
+    }
+
+    .tasks h2, .shopping h2, .goals h2 {
+      font-size: 1.2em;
+      color: #aaa;
+    }
+
+    .tasks ul, .shopping ul, .goals ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    .tasks li, .shopping li, .goals li {
+      margin: 8px 0;
+      font-size: 1em;
+    }
+
+    .goal-tag {
+      font-size: 0.8em;
+      color: #ccc;
+      margin-left: 6px;
+    }
+
+    #clearShoppingList {
+      margin-top: 10px;
+      padding: 8px 16px;
+      background-color: #aa0000;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      display: block;
+    }
+
+    .family {
+      background-color: #1a1a1a;
+      padding: 20px;
+      border-radius: 12px;
+    }
+
+    .code-box {
+      font-size: 1.5em;
+      background: #333;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      display: inline-block;
+    }
+
+    #shareCode {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 20px;
+      background-color: #555;
+      color: white;
+    }
+
+    .tts-btn {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 1em;
+      background-color: #444;
+      color: white;
+      border: none;
+      border-radius: 20px;
+    }
+  </style>
 </head>
 <body>
   <main>
@@ -41,8 +154,156 @@
     </section>
 
     <button class="tts-btn">🔊 Lyssna på dagens lista</button>
+    
   </main>
+  <script>
 
-  <script src="script.js"></script>
+  // Enkel röstinmatning (visar alert – fungerar inte i alla browsers)
+document.getElementById("speakBtn").addEventListener("click", () => {
+  alert("Röstinmatning fungerar endast i Safari på vissa enheter.");
+});
+
+// Text-till-tal
+document.querySelector('.tts-btn').addEventListener('click', () => {
+  const reminders = JSON.parse(localStorage.getItem("reminders")) || [];
+  const tasks = reminders.map(r => `${r.time} ${r.text}`);
+  const msg = new SpeechSynthesisUtterance(tasks.join(". "));
+  msg.lang = "sv-SE";
+  speechSynthesis.speak(msg);
+});
+
+// Manuella inmatningar
+document.querySelector(".action.red").addEventListener("click", () => {
+  const text = prompt("Vad ska du bli påmind om?");
+  if (text) handleVoiceCommand("påminnelse: " + text);
+});
+
+document.querySelector(".action.green").addEventListener("click", () => {
+  const text = prompt("Vad ska du handla?");
+  if (text) handleVoiceCommand("inköp: " + text);
+});
+
+document.querySelector(".action.blue").addEventListener("click", () => {
+  const text = prompt("Vilket mål vill du lägga till?");
+  if (text) handleVoiceCommand("mål: " + text);
+});
+
+function handleVoiceCommand(text) {
+  const now = new Date();
+  const time = now.toLocaleTimeString("sv-SE").slice(0,5);
+  const lower = text.toLowerCase();
+  let category = "påminnelse";
+
+  if (lower.includes("inköp")) category = "inköp";
+  if (lower.includes("mål")) category = "mål";
+
+  const reminderText = text.split(":").slice(1).join(":").trim();
+  const reminder = { time: time, text: reminderText, category };
+
+  if (category === "inköp") {
+    let shopping = JSON.parse(localStorage.getItem("shoppingList")) || [];
+    const items = reminderText.split(" och ").flatMap(x => x.split(","));
+    items.forEach(item => shopping.push(item.trim()));
+    localStorage.setItem("shoppingList", JSON.stringify(shopping));
+  } else if (category === "mål") {
+    let goals = JSON.parse(localStorage.getItem("goalList")) || [];
+    let tag = "allmänt";
+    if (text.includes("jobb") || text.includes("arbete")) tag = "arbete";
+    if (text.includes("hem") || text.includes("fritid")) tag = "privat";
+    goals.push({ text: reminderText, tag: tag });
+    localStorage.setItem("goalList", JSON.stringify(goals));
+  } else {
+    let local = JSON.parse(localStorage.getItem("reminders")) || [];
+    local.push(reminder);
+    localStorage.setItem("reminders", JSON.stringify(local));
+  }
+
+  renderReminders();
+  renderShoppingList();
+  renderGoals();
+}
+
+function renderReminders() {
+  const list = document.querySelector(".tasks ul");
+  list.innerHTML = "";
+  const reminders = JSON.parse(localStorage.getItem("reminders")) || [];
+
+  reminders.forEach((item, index) => {
+    const li = document.createElement("li");
+    li.innerHTML = `<input type="checkbox" data-index="${index}" /> <strong>${item.time}</strong> ${item.text}`;
+    list.appendChild(li);
+  });
+
+  list.querySelectorAll("input[type='checkbox']").forEach(cb => {
+    cb.addEventListener("change", () => {
+      const i = cb.dataset.index;
+      reminders.splice(i, 1);
+      localStorage.setItem("reminders", JSON.stringify(reminders));
+      renderReminders();
+    });
+  });
+}
+
+function renderShoppingList() {
+  const shopping = JSON.parse(localStorage.getItem("shoppingList")) || [];
+  const ul = document.getElementById("shoppingList");
+  ul.innerHTML = "";
+  shopping.forEach(item => {
+    const li = document.createElement("li");
+    li.textContent = "• " + item;
+    ul.appendChild(li);
+  });
+}
+
+document.getElementById("clearShoppingList").addEventListener("click", () => {
+  if (confirm("Vill du verkligen tömma inköpslistan?")) {
+    localStorage.removeItem("shoppingList");
+    renderShoppingList();
+  }
+});
+
+function renderGoals() {
+  const goals = JSON.parse(localStorage.getItem("goalList")) || [];
+  const ul = document.getElementById("goalList");
+  ul.innerHTML = "";
+  goals.forEach((g, index) => {
+    const li = document.createElement("li");
+    li.innerHTML = `<input type="checkbox" data-index="${index}" /> • ${g.text} <span class="goal-tag">(${g.tag})</span>`;
+    ul.appendChild(li);
+  });
+
+  ul.querySelectorAll("input[type='checkbox']").forEach(cb => {
+    cb.addEventListener("change", () => {
+      goals.splice(cb.dataset.index, 1);
+      localStorage.setItem("goalList", JSON.stringify(goals));
+      renderGoals();
+    });
+  });
+}
+
+// Milo-kod
+function getOrCreateMiloCode() {
+  let code = localStorage.getItem("miloCode");
+  if (!code) {
+    const suffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+    code = `MILO-${suffix}`;
+    localStorage.setItem("miloCode", code);
+  }
+  return code;
+}
+
+document.getElementById("myCode").textContent = getOrCreateMiloCode();
+
+document.getElementById("shareCode").addEventListener("click", () => {
+  const code = getOrCreateMiloCode();
+  alert(`Kopiera följande kod och skicka till din familjemedlem: ${code}`);
+});
+
+window.onload = () => {
+  renderReminders();
+  renderShoppingList();
+  renderGoals();
+};
+</script>
 </body>
 </html>
