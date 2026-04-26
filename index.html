@@ -60,9 +60,19 @@
     .btn { background: var(--accent); color: #0f0f0f; border: none; border-radius: 12px; padding: 14px 18px; font-family: 'DM Sans', sans-serif; font-size: 16px; font-weight: 600; cursor: pointer; white-space: nowrap; }
     .btn:active { opacity: 0.85; }
     .btn.sec { background: var(--surface2); color: var(--text); border: 1px solid var(--border); font-weight: 500; }
-    .btn.mic { background: var(--surface2); border: 1px solid var(--border); color: var(--text); font-size: 22px; padding: 14px 16px; border-radius: 12px; }
-    .btn.mic.listening { background: var(--danger); border-color: var(--danger); color: #fff; animation: pulse 1s infinite; }
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
+
+    .mic-wrap { display: flex; flex-direction: column; align-items: center; margin-bottom: 16px; }
+    .mic-btn { width: 80px; height: 80px; border-radius: 50%; background: var(--surface2); border: 2px solid var(--border); font-size: 32px; cursor: pointer; display: flex; align-items: center; justify-content: center; position: relative; transition: all 0.2s; }
+    .mic-btn.listening { background: var(--danger); border-color: var(--danger); animation: mic-pulse 1.2s infinite; }
+    @keyframes mic-pulse { 0%{box-shadow:0 0 0 0 rgba(245,86,74,0.7)} 70%{box-shadow:0 0 0 20px rgba(245,86,74,0)} 100%{box-shadow:0 0 0 0 rgba(245,86,74,0)} }
+    .mic-label { margin-top: 10px; font-size: 13px; font-family: 'DM Mono', monospace; color: var(--muted); transition: color 0.2s; }
+    .mic-label.listening { color: var(--danger); }
+
+    .voice-status { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; font-size: 14px; color: var(--muted); font-family: 'DM Mono', monospace; margin-bottom: 16px; min-height: 46px; display: flex; align-items: center; transition: all 0.2s; }
+    .voice-status.active { color: var(--accent); border-color: var(--accent); }
+
+    .quick-btns { display: flex; gap: 10px; margin-bottom: 8px; }
+    .quick-btns .btn { flex: 1; font-size: 14px; padding: 12px 8px; }
 
     .list-item { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
     .list-item:last-child { border-bottom: none; }
@@ -82,8 +92,6 @@
     .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
     .stat-card .snum { font-size: 30px; font-weight: 600; font-family: 'DM Mono', monospace; color: var(--accent); }
     .stat-card .slabel { font-size: 13px; color: var(--muted); margin-top: 2px; }
-    .voice-status { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; font-size: 14px; color: var(--muted); font-family: 'DM Mono', monospace; margin-bottom: 12px; min-height: 46px; display: flex; align-items: center; }
-    .voice-status.active { color: var(--accent); border-color: var(--accent); }
     .install-banner { background: var(--surface2); border: 1px solid var(--accent); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 20px; font-size: 14px; display: none; line-height: 1.5; }
     .install-banner b { color: var(--accent); display: block; margin-bottom: 4px; }
 
@@ -96,6 +104,14 @@
     .rem-dot.past { background: var(--muted); }
     .rtime { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; margin-top: 2px; }
 
+    .alarm-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.92); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; padding: 32px; }
+    .alarm-overlay.active { display: flex; }
+    .alarm-icon { font-size: 64px; animation: alarm-shake 0.5s infinite; margin-bottom: 20px; }
+    @keyframes alarm-shake { 0%,100%{transform:rotate(-10deg)} 50%{transform:rotate(10deg)} }
+    .alarm-title { font-size: 22px; font-weight: 600; text-align: center; margin-bottom: 8px; }
+    .alarm-text { font-size: 17px; color: var(--muted); text-align: center; margin-bottom: 32px; line-height: 1.5; }
+    .alarm-dismiss { background: var(--accent); color: #0f0f0f; border: none; border-radius: 16px; padding: 18px 48px; font-family: 'DM Sans', sans-serif; font-size: 18px; font-weight: 700; cursor: pointer; }
+
     .set-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid var(--border); }
     .set-row:last-child { border-bottom: none; }
     .set-val { font-size: 13px; color: var(--muted); font-family: 'DM Mono', monospace; }
@@ -104,6 +120,13 @@
   </style>
 </head>
 <body>
+
+<div class="alarm-overlay" id="alarm-overlay">
+  <div class="alarm-icon">🔔</div>
+  <div class="alarm-title">Milo påminner dig!</div>
+  <div class="alarm-text" id="alarm-text">—</div>
+  <button class="alarm-dismiss" onclick="dismissAlarm()">OK, jag förstår!</button>
+</div>
 
 <div class="setup-screen" id="setup-screen">
   <div class="setup-logo">Mi<span>lo</span></div>
@@ -122,7 +145,7 @@
       <div class="big-code" id="gen-code">------</div>
       <div class="code-hint">Din familjakod – dela med familjen 👨‍👩‍👧</div>
     </div>
-    <p style="font-size:13px;color:var(--muted);text-align:center;margin-bottom:20px;line-height:1.5">Alla i familjen skriver in denna kod när de sätter upp Milo – då delar ni samma listor i realtid.</p>
+    <p style="font-size:13px;color:var(--muted);text-align:center;margin-bottom:20px;line-height:1.5">Alla i familjen skriver in denna kod när de sätter upp Milo.</p>
     <button class="setup-btn" onclick="finishSetup()">Starta Milo 🚀</button>
   </div>
 </div>
@@ -157,19 +180,23 @@
     </div>
     <div class="section-title">Röststyrning</div>
     <div class="voice-status" id="voice-status">Tryck på mikrofonen och prata...</div>
-    <div class="input-row" style="margin-bottom:6px">
-      <button class="btn mic" id="mic-btn" onclick="toggleMic()">🎤</button>
-      <button class="btn sec" style="flex:1" onclick="showPage('shopping')">🛒 Inköp</button>
-      <button class="btn sec" style="flex:1" onclick="showPage('todos')">✅ Att göra</button>
+    <div class="mic-wrap">
+      <button class="mic-btn" id="mic-btn" onclick="toggleMic()">🎤</button>
+      <div class="mic-label" id="mic-label">Tryck för att prata</div>
     </div>
-    <p style="font-size:13px;color:var(--muted)">Säg t.ex. "lägg till mjölk" eller "påminn mig kl 18"</p>
+    <div class="quick-btns">
+      <button class="btn sec" onclick="showPage('shopping')">🛒 Inköp</button>
+      <button class="btn sec" onclick="showPage('todos')">✅ Att göra</button>
+      <button class="btn sec" onclick="showPage('reminders')">🔔 Påminn</button>
+    </div>
+    <p style="font-size:13px;color:var(--muted);margin-top:8px">Säg t.ex. "lägg till mjölk" eller "påminn mig kl 18"</p>
   </div>
 
   <div class="page" id="page-shopping">
     <div class="section-title">Inköpslista <span class="sync-dot" id="dot-shop"></span></div>
     <div class="input-row">
       <input type="text" id="shop-input" placeholder="Lägg till vara..." onkeydown="if(event.key==='Enter')addItem('shop')" />
-      <button class="btn mic" onclick="startVoiceFor('shop')">🎤</button>
+      <button class="btn" style="font-size:22px;padding:14px 16px;background:var(--surface2);color:var(--text);border:1px solid var(--border)" onclick="startVoiceFor('shop')">🎤</button>
       <button class="btn" onclick="addItem('shop')">+</button>
     </div>
     <div class="card" id="shop-list"><div class="empty"><div class="emoji">🛒</div>Inköpslistan är tom</div></div>
@@ -180,7 +207,7 @@
     <div class="section-title">Att göra <span class="sync-dot" id="dot-todos"></span></div>
     <div class="input-row">
       <input type="text" id="todo-input" placeholder="Lägg till uppgift..." onkeydown="if(event.key==='Enter')addItem('todos')" />
-      <button class="btn mic" onclick="startVoiceFor('todo')">🎤</button>
+      <button class="btn" style="font-size:22px;padding:14px 16px;background:var(--surface2);color:var(--text);border:1px solid var(--border)" onclick="startVoiceFor('todo')">🎤</button>
       <button class="btn" onclick="addItem('todos')">+</button>
     </div>
     <div class="card" id="todo-list"><div class="empty"><div class="emoji">✅</div>Inga uppgifter</div></div>
@@ -230,296 +257,234 @@ const firebaseConfig = {
 };
 
 let db = null;
-
 window.initFirebase = function(code, name) {
   try {
     const app = initializeApp(firebaseConfig);
     db = getDatabase(app);
-    window._db = db; window._code = code; window._name = name;
-    setSyncOk();
-    listenAll(db, code);
-  } catch(e) {
-    console.warn('Firebase fel:', e);
-    setSyncLocal();
-    loadLocal();
-  }
+    window._db=db; window._code=code; window._name=name;
+    setSyncOk(); listenAll(db, code);
+  } catch(e) { setSyncLocal(); loadLocal(); }
 };
 
 function setSyncOk() {
-  document.getElementById('s-sync').textContent = '🟢 Ansluten – realtid';
-  ['dot-shop','dot-todos','dot-rem'].forEach(id => { const d=document.getElementById(id); if(d) d.classList.add('ok'); });
+  document.getElementById('s-sync').textContent='🟢 Ansluten – realtid';
+  ['dot-shop','dot-todos','dot-rem'].forEach(id=>{const d=document.getElementById(id);if(d)d.classList.add('ok');});
 }
-function setSyncLocal() { document.getElementById('s-sync').textContent = '🟡 Lokalt läge'; }
+function setSyncLocal(){document.getElementById('s-sync').textContent='🟡 Lokalt läge';}
 
-function listenAll(db, code) {
-  ['shop','todos','reminders'].forEach(type => {
-    onValue(ref(db, `milo/${code}/${type}`), snap => {
-      const val = snap.val() || {};
-      window['_'+type] = Object.entries(val).map(([id,v]) => ({...v, id}));
-      window['render_'+type]();
-      window.updateStats();
+function listenAll(db,code){
+  ['shop','todos','reminders'].forEach(type=>{
+    onValue(ref(db,`milo/${code}/${type}`),snap=>{
+      const val=snap.val()||{};
+      window['_'+type]=Object.entries(val).map(([id,v])=>({...v,id}));
+      window['render_'+type](); window.updateStats();
     });
   });
 }
 
-function loadLocal() {
-  ['shop','todos','reminders'].forEach(type => {
-    window['_'+type] = JSON.parse(localStorage.getItem('milo_'+type) || '[]');
+function loadLocal(){
+  ['shop','todos','reminders'].forEach(type=>{
+    window['_'+type]=JSON.parse(localStorage.getItem('milo_'+type)||'[]');
     window['render_'+type]();
   });
   window.updateStats();
 }
 
-window._add = async function(type, item) {
-  if (db && window._code) {
-    await push(ref(db, `milo/${window._code}/${type}`), item);
-  } else {
-    const arr = window['_'+type] || [];
-    arr.push({...item, id: Date.now().toString()});
-    window['_'+type] = arr;
-    localStorage.setItem('milo_'+type, JSON.stringify(arr));
-    window['render_'+type]();
-    window.updateStats();
-  }
+window._add=async function(type,item){
+  if(db&&window._code){await push(ref(db,`milo/${window._code}/${type}`),item);}
+  else{const arr=window['_'+type]||[];arr.push({...item,id:Date.now().toString()});window['_'+type]=arr;localStorage.setItem('milo_'+type,JSON.stringify(arr));window['render_'+type]();window.updateStats();}
 };
-
-window._toggle = async function(type, id) {
-  const item = (window['_'+type]||[]).find(i=>i.id===id);
-  if (!item) return;
-  if (db && window._code) {
-    await update(ref(db, `milo/${window._code}/${type}/${id}`), {done:!item.done});
-  } else {
-    window['_'+type] = window['_'+type].map(i=>i.id===id?{...i,done:!i.done}:i);
-    localStorage.setItem('milo_'+type, JSON.stringify(window['_'+type]));
-    window['render_'+type](); window.updateStats();
-  }
+window._toggle=async function(type,id){
+  const item=(window['_'+type]||[]).find(i=>i.id===id);if(!item)return;
+  if(db&&window._code){await update(ref(db,`milo/${window._code}/${type}/${id}`),{done:!item.done});}
+  else{window['_'+type]=window['_'+type].map(i=>i.id===id?{...i,done:!i.done}:i);localStorage.setItem('milo_'+type,JSON.stringify(window['_'+type]));window['render_'+type]();window.updateStats();}
 };
-
-window._del = async function(type, id) {
-  if (db && window._code) {
-    await remove(ref(db, `milo/${window._code}/${type}/${id}`));
-  } else {
-    window['_'+type] = (window['_'+type]||[]).filter(i=>i.id!==id);
-    localStorage.setItem('milo_'+type, JSON.stringify(window['_'+type]));
-    window['render_'+type](); window.updateStats();
-  }
+window._del=async function(type,id){
+  if(db&&window._code){await remove(ref(db,`milo/${window._code}/${type}/${id}`));}
+  else{window['_'+type]=(window['_'+type]||[]).filter(i=>i.id!==id);localStorage.setItem('milo_'+type,JSON.stringify(window['_'+type]));window['render_'+type]();window.updateStats();}
 };
-
-window._clearDone = async function(type) {
-  const done = (window['_'+type]||[]).filter(i=>i.done);
-  if (db && window._code) {
-    await Promise.all(done.map(i=>remove(ref(db, `milo/${window._code}/${type}/${i.id}`))));
-  } else {
-    window['_'+type] = (window['_'+type]||[]).filter(i=>!i.done);
-    localStorage.setItem('milo_'+type, JSON.stringify(window['_'+type]));
-    window['render_'+type](); window.updateStats();
-  }
+window._clearDone=async function(type){
+  const done=(window['_'+type]||[]).filter(i=>i.done);
+  if(db&&window._code){await Promise.all(done.map(i=>remove(ref(db,`milo/${window._code}/${type}/${i.id}`))));}
+  else{window['_'+type]=(window['_'+type]||[]).filter(i=>!i.done);localStorage.setItem('milo_'+type,JSON.stringify(window['_'+type]));window['render_'+type]();window.updateStats();}
 };
 </script>
 
 <script>
-window._shop=[]; window._todos=[]; window._reminders=[];
+window._shop=[];window._todos=[];window._reminders=[];
 
-function goStep2() {
+let audioCtx=null;
+function getAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();return audioCtx;}
+function beep(freq,duration,vol=0.3){
+  try{const ctx=getAudio();const osc=ctx.createOscillator();const gain=ctx.createGain();osc.connect(gain);gain.connect(ctx.destination);osc.frequency.value=freq;gain.gain.setValueAtTime(vol,ctx.currentTime);gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+duration);osc.start(ctx.currentTime);osc.stop(ctx.currentTime+duration);}catch(e){}
+}
+function micStartSound(){beep(880,0.12);setTimeout(()=>beep(1100,0.1),120);}
+function micStopSound(){beep(660,0.12);setTimeout(()=>beep(440,0.1),120);}
+function playAlarm(){
+  try{const ctx=getAudio();const pattern=[800,0,800,0,800,0,1000,1000];let t=ctx.currentTime;
+  pattern.forEach((freq)=>{if(freq===0){t+=0.1;return;}const osc=ctx.createOscillator();const gain=ctx.createGain();osc.connect(gain);gain.connect(ctx.destination);osc.frequency.value=freq;gain.gain.setValueAtTime(0.5,t);gain.gain.exponentialRampToValueAtTime(0.001,t+0.3);osc.start(t);osc.stop(t+0.3);t+=0.35;});}catch(e){}
+}
+
+let alarmInterval=null;
+function triggerAlarm(text){
+  document.getElementById('alarm-text').textContent=text;
+  document.getElementById('alarm-overlay').classList.add('active');
+  playAlarm();
+  if(navigator.vibrate)navigator.vibrate([500,200,500,200,500]);
+  alarmInterval=setInterval(()=>{playAlarm();if(navigator.vibrate)navigator.vibrate([500,200,500]);},4000);
+}
+function dismissAlarm(){
+  document.getElementById('alarm-overlay').classList.remove('active');
+  if(alarmInterval){clearInterval(alarmInterval);alarmInterval=null;}
+}
+
+function scheduleAlarm(text,timeStr){
+  const ms=new Date(timeStr).getTime()-Date.now();
+  if(ms<=0)return;
+  setTimeout(()=>triggerAlarm(text),ms);
+  if('Notification' in window){
+    Notification.requestPermission().then(p=>{
+      if(p==='granted')setTimeout(()=>new Notification('Milo 🔔',{body:text,requireInteraction:true}),ms);
+    });
+  }
+}
+
+function goStep2(){
   const name=document.getElementById('setup-name').value.trim();
   if(!name){alert('Skriv ditt namn');return;}
   localStorage.setItem('milo_name',name);
-  const code=genCode();
-  localStorage.setItem('milo_code',code);
+  const code=genCode();localStorage.setItem('milo_code',code);
   document.getElementById('gen-code').textContent=code;
   document.getElementById('step1').style.display='none';
   document.getElementById('step2').style.display='block';
 }
-
-function joinFamily() {
+function joinFamily(){
   const name=document.getElementById('setup-name').value.trim();
   const code=document.getElementById('join-code').value.trim().toUpperCase();
   if(!name){alert('Skriv ditt namn');return;}
   if(code.length!==6){alert('Koden måste vara 6 tecken');return;}
-  localStorage.setItem('milo_name',name);
-  localStorage.setItem('milo_code',code);
-  finishSetup();
+  localStorage.setItem('milo_name',name);localStorage.setItem('milo_code',code);finishSetup();
 }
-
-function finishSetup() {
+function finishSetup(){
   document.getElementById('setup-screen').classList.add('hidden');
   startApp(localStorage.getItem('milo_name'),localStorage.getItem('milo_code'));
 }
+function genCode(){const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';return Array.from({length:6},()=>c[Math.floor(Math.random()*c.length)]).join('');}
 
-function genCode() {
-  const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  return Array.from({length:6},()=>c[Math.floor(Math.random()*c.length)]).join('');
-}
-
-function startApp(name,code) {
+function startApp(name,code){
   document.getElementById('s-name').textContent=name;
   document.getElementById('s-code').textContent=code;
   document.getElementById('s-code-big').textContent=code;
   document.getElementById('family-badge').textContent='👨‍👩‍👧 '+code;
   document.getElementById('focus-sub').textContent='Hej '+name+'! Vad ska vi ta tag i?';
-  setGreeting(); setDefaultTime(); checkInstall();
-  if(window.initFirebase) window.initFirebase(code,name);
+  setGreeting();setDefaultTime();checkInstall();
+  if(window.initFirebase)window.initFirebase(code,name);
+  setTimeout(()=>{(window._reminders||[]).forEach(r=>{if(r.time&&new Date(r.time).getTime()>Date.now())scheduleAlarm(r.label||'',r.time);});},2000);
 }
 
 window.addEventListener('DOMContentLoaded',()=>{
-  const name=localStorage.getItem('milo_name');
-  const code=localStorage.getItem('milo_code');
+  const name=localStorage.getItem('milo_name');const code=localStorage.getItem('milo_code');
   if(name&&code){document.getElementById('setup-screen').classList.add('hidden');startApp(name,code);}
 });
 
-function showPage(id) {
+function showPage(id){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
   document.getElementById('tab-'+id).classList.add('active');
 }
-
-function setGreeting() {
+function setGreeting(){
   const h=new Date().getHours();
   const g=h<5?'God natt 🌙':h<10?'God morgon ☀️':h<13?'God förmiddag 👋':h<18?'God eftermiddag 💪':'God kväll 🌆';
   document.getElementById('time-greeting').textContent=g;
   const days=['Sön','Mån','Tis','Ons','Tor','Fre','Lör'],months=['jan','feb','mar','apr','maj','jun','jul','aug','sep','okt','nov','dec'];
-  const now=new Date();
-  document.getElementById('greeting').textContent=days[now.getDay()]+' '+now.getDate()+' '+months[now.getMonth()];
+  const now=new Date();document.getElementById('greeting').textContent=days[now.getDay()]+' '+now.getDate()+' '+months[now.getMonth()];
 }
-
 window.updateStats=function(){
   document.getElementById('stat-todos').textContent=(window._todos||[]).filter(t=>!t.done).length;
   document.getElementById('stat-shop').textContent=(window._shop||[]).filter(s=>!s.done).length;
 };
-
-function addItem(type) {
+function addItem(type){
   const el=document.getElementById(type==='shop'?'shop-input':'todo-input');
   const val=el.value.trim();if(!val)return;el.value='';
   window._add(type,{label:val,done:false,by:localStorage.getItem('milo_name')||'',ts:Date.now()});
 }
-
 window.render_shop=function(){
-  const items=window._shop||[];
-  const el=document.getElementById('shop-list');
+  const items=window._shop||[];const el=document.getElementById('shop-list');
   if(!items.length){el.innerHTML='<div class="empty"><div class="emoji">🛒</div>Inköpslistan är tom</div>';return;}
-  el.innerHTML=items.map(i=>`<div class="list-item">
-    <div class="check ${i.done?'done':''}" onclick="_toggle('shop','${i.id}')">${i.done?'✓':''}</div>
-    <div class="item-info"><div class="item-label ${i.done?'done':''}">${esc(i.label)}</div>${i.by?`<div class="item-by">av ${esc(i.by)}</div>`:''}</div>
-    <button class="del" onclick="_del('shop','${i.id}')">✕</button>
-  </div>`).join('');
+  el.innerHTML=items.map(i=>`<div class="list-item"><div class="check ${i.done?'done':''}" onclick="_toggle('shop','${i.id}')">${i.done?'✓':''}</div><div class="item-info"><div class="item-label ${i.done?'done':''}">${esc(i.label)}</div>${i.by?`<div class="item-by">av ${esc(i.by)}</div>`:''}</div><button class="del" onclick="_del('shop','${i.id}')">✕</button></div>`).join('');
 };
-
 window.render_todos=function(){
-  const items=window._todos||[];
-  const el=document.getElementById('todo-list');
+  const items=window._todos||[];const el=document.getElementById('todo-list');
   if(!items.length){el.innerHTML='<div class="empty"><div class="emoji">✅</div>Inga uppgifter</div>';return;}
-  el.innerHTML=items.map(i=>`<div class="list-item">
-    <div class="check ${i.done?'done':''}" onclick="_toggle('todos','${i.id}')">${i.done?'✓':''}</div>
-    <div class="item-info"><div class="item-label ${i.done?'done':''}">${esc(i.label)}</div>${i.by?`<div class="item-by">av ${esc(i.by)}</div>`:''}</div>
-    <button class="del" onclick="_del('todos','${i.id}')">✕</button>
-  </div>`).join('');
+  el.innerHTML=items.map(i=>`<div class="list-item"><div class="check ${i.done?'done':''}" onclick="_toggle('todos','${i.id}')">${i.done?'✓':''}</div><div class="item-info"><div class="item-label ${i.done?'done':''}">${esc(i.label)}</div>${i.by?`<div class="item-by">av ${esc(i.by)}</div>`:''}</div><button class="del" onclick="_del('todos','${i.id}')">✕</button></div>`).join('');
 };
-
 window.render_reminders=function(){
-  const items=window._reminders||[];
-  const el=document.getElementById('rem-list');
+  const items=window._reminders||[];const el=document.getElementById('rem-list');
   if(!items.length){el.innerHTML='<div class="empty"><div class="emoji">🔔</div>Inga påminnelser</div>';return;}
   const now=Date.now();
-  el.innerHTML=items.map(i=>{
-    const past=i.time&&new Date(i.time).getTime()<now;
-    return `<div class="rem-item">
-      <div class="rem-dot ${past?'past':''}"></div>
-      <div class="item-info"><div style="font-size:16px">${esc(i.label||'')}</div><div class="rtime">${fmtTime(i.time)}${i.by?' · av '+esc(i.by):''}</div></div>
-      <button class="del" onclick="_del('reminders','${i.id}')">✕</button>
-    </div>`;
-  }).join('');
+  el.innerHTML=items.map(i=>{const past=i.time&&new Date(i.time).getTime()<now;return`<div class="rem-item"><div class="rem-dot ${past?'past':''}"></div><div class="item-info"><div style="font-size:16px">${esc(i.label||'')}</div><div class="rtime">${fmtTime(i.time)}${i.by?' · av '+esc(i.by):''}</div></div><button class="del" onclick="_del('reminders','${i.id}')">✕</button></div>`;}).join('');
 };
-
 function addReminder(){
-  const text=document.getElementById('rem-text').value.trim();
-  const time=document.getElementById('rem-time').value;
+  const text=document.getElementById('rem-text').value.trim();const time=document.getElementById('rem-time').value;
   if(!text){alert('Skriv vad du ska påminnas om');return;}
   document.getElementById('rem-text').value='';
   window._add('reminders',{label:text,time,done:false,by:localStorage.getItem('milo_name')||'',ts:Date.now()});
-  if(time) scheduleNotif(text,time);
+  if(time)scheduleAlarm(text,time);
+  speak('Påminnelse satt!');
 }
-
 function clearDone(type){window._clearDone(type);}
-
-function fmtTime(t){
-  if(!t) return 'Ingen tid';
-  const d=new Date(t);
-  return d.toLocaleDateString('sv-SE',{weekday:'short',month:'short',day:'numeric'})+' '+d.toLocaleTimeString('sv-SE',{hour:'2-digit',minute:'2-digit'});
-}
-
-function scheduleNotif(text,timeStr){
-  if(!('Notification' in window)) return;
-  const ms=new Date(timeStr).getTime()-Date.now();
-  if(ms<=0) return;
-  Notification.requestPermission().then(p=>{if(p==='granted') setTimeout(()=>new Notification('Milo 🔔',{body:text}),ms);});
-}
-
+function fmtTime(t){if(!t)return'Ingen tid';const d=new Date(t);return d.toLocaleDateString('sv-SE',{weekday:'short',month:'short',day:'numeric'})+' '+d.toLocaleTimeString('sv-SE',{hour:'2-digit',minute:'2-digit'});}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-
-function copyCode(){
-  const code=localStorage.getItem('milo_code')||'';
-  navigator.clipboard.writeText(code).then(()=>alert('Kopierat! Koden är: '+code)).catch(()=>alert('Din familjakod: '+code));
-}
-
-function resetApp(){
-  if(confirm('Logga ut och byt familj?')){localStorage.clear();location.reload();}
-}
+function copyCode(){const code=localStorage.getItem('milo_code')||'';navigator.clipboard.writeText(code).then(()=>alert('Kopierat! '+code)).catch(()=>alert('Familjakod: '+code));}
+function resetApp(){if(confirm('Logga ut?')){localStorage.clear();location.reload();}}
 
 let recognition=null,micTarget='home',isListening=false;
 function setupRec(){
-  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(!SR) return null;
-  const r=new SR();r.lang='sv-SE';r.continuous=false;r.interimResults=false;
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR)return null;
+  const r=new SR();r.lang='sv-SE';r.continuous=false;r.interimResults=false;r.maxAlternatives=3;
   r.onresult=e=>handleVoice(e.results[0][0].transcript.toLowerCase().trim());
-  r.onerror=()=>stopL();r.onend=()=>stopL();
-  return r;
+  r.onerror=e=>{stopL();if(e.error==='no-speech')setVS('Hörde inget – prova igen');else if(e.error==='not-allowed')setVS('Mikrofonåtkomst nekad');};
+  r.onend=()=>stopL();return r;
 }
-function toggleMic(){isListening?stopL():(micTarget='home',startL());}
-function startVoiceFor(t){micTarget=t;startL();}
+function toggleMic(){try{getAudio();}catch(e){}isListening?stopL():(micTarget='home',startL());}
+function startVoiceFor(t){try{getAudio();}catch(e){}micTarget=t;startL();}
 function startL(){
-  if(!recognition) recognition=setupRec();
+  if(!recognition)recognition=setupRec();
   if(!recognition){setVS('Röststyrning stöds ej 😕');return;}
-  try{recognition.start();isListening=true;document.getElementById('mic-btn').classList.add('listening');setVS('🎤 Lyssnar...');}catch(e){}
+  try{recognition.start();isListening=true;micStartSound();document.getElementById('mic-btn').classList.add('listening');document.getElementById('mic-label').textContent='Lyssnar...';document.getElementById('mic-label').classList.add('listening');setVS('🎤 Lyssnar – prata nu!',true);}catch(e){}
 }
 function stopL(){
-  isListening=false;
-  const b=document.getElementById('mic-btn');if(b)b.classList.remove('listening');
+  isListening=false;micStopSound();
+  const b=document.getElementById('mic-btn');const l=document.getElementById('mic-label');
+  if(b)b.classList.remove('listening');if(l){l.textContent='Tryck för att prata';l.classList.remove('listening');}
   setVS('Tryck på mikrofonen och prata...');
 }
-function setVS(msg,active){
-  const el=document.getElementById('voice-status');if(!el)return;
-  el.textContent=msg;el.classList.toggle('active',!!active);
-}
+function setVS(msg,active){const el=document.getElementById('voice-status');if(!el)return;el.textContent=msg;el.classList.toggle('active',!!active);}
 function handleVoice(text){
-  setVS('Hörde: "'+text+'"',true);
-  const name=localStorage.getItem('milo_name')||'';
+  setVS('Hörde: "'+text+'"',true);const name=localStorage.getItem('milo_name')||'';
   if(micTarget==='shop'||text.includes('inköp')||text.includes('handla')||text.includes('köp')||text.includes('lägg till')){
-    let item=text.replace(/lägg till/gi,'').replace(/i inköpslistan/gi,'').replace(/handla/gi,'').replace(/köp/gi,'').trim();
-    if(item){window._add('shop',{label:item,done:false,by:name,ts:Date.now()});showPage('shopping');speak('Lade till '+item);}return;
+    let item=text.replace(/lägg till/gi,'').replace(/i inköpslistan/gi,'').replace(/på listan/gi,'').replace(/handla/gi,'').replace(/köp/gi,'').trim();
+    if(item){window._add('shop',{label:item,done:false,by:name,ts:Date.now()});showPage('shopping');speak('Lade till '+item+' i inköpslistan');}return;
   }
-  if(micTarget==='todo'||text.includes('uppgift')||text.includes('att göra')||text.includes('kom ihåg')){
-    let item=text.replace(/lägg till/gi,'').replace(/uppgift/gi,'').replace(/att göra/gi,'').replace(/kom ihåg/gi,'').trim();
+  if(micTarget==='todo'||text.includes('uppgift')||text.includes('att göra')||text.includes('kom ihåg')||text.includes('notera')){
+    let item=text.replace(/lägg till/gi,'').replace(/uppgift/gi,'').replace(/att göra/gi,'').replace(/kom ihåg/gi,'').replace(/notera/gi,'').trim();
     if(item){window._add('todos',{label:item,done:false,by:name,ts:Date.now()});showPage('todos');speak('Lade till: '+item);}return;
   }
-  if(text.includes('påminn')||text.includes('kl ')||text.includes('klockan')){
-    showPage('reminders');document.getElementById('rem-text').value=text;speak('Öppnade påminnelser.');return;
+  if(text.includes('påminn')||text.includes('kl ')||text.includes('klockan')||text.includes('om ')){
+    showPage('reminders');document.getElementById('rem-text').value=text;speak('Öppnade påminnelser. Kontrollera tid och spara.');return;
   }
-  setVS('Förstod inte. Prova: "lägg till mjölk"');
+  setVS('Förstod inte. Prova: "lägg till mjölk"');speak('Förstod inte, försök igen.');
 }
 function speak(text){
-  if(!window.speechSynthesis)return;
-  const u=new SpeechSynthesisUtterance(text);u.lang='sv-SE';speechSynthesis.speak(u);
+  if(!window.speechSynthesis)return;speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(text);u.lang='sv-SE';u.rate=1.05;
+  const voices=speechSynthesis.getVoices();const sv=voices.find(v=>v.lang.startsWith('sv'));if(sv)u.voice=sv;
+  speechSynthesis.speak(u);
 }
-function checkInstall(){
-  const isIOS=/iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase());
-  if(isIOS&&!window.navigator.standalone)document.getElementById('install-banner').style.display='block';
-}
-function setDefaultTime(){
-  const now=new Date();now.setMinutes(now.getMinutes()+30);now.setSeconds(0);
-  const pad=n=>String(n).padStart(2,'0');
-  document.getElementById('rem-time').value=`${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
-}
+if(window.speechSynthesis)speechSynthesis.onvoiceschanged=()=>speechSynthesis.getVoices();
+function checkInstall(){const isIOS=/iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase());if(isIOS&&!window.navigator.standalone)document.getElementById('install-banner').style.display='block';}
+function setDefaultTime(){const now=new Date();now.setMinutes(now.getMinutes()+30);now.setSeconds(0);const pad=n=>String(n).padStart(2,'0');document.getElementById('rem-time').value=`${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;}
 </script>
 </body>
 </html>
